@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	
+	"log"
 
 	"github.com/tidwall/resp"
 )
 
 const (
 	CommandSET = "SET"
-	
+
 )
 
 type Command interface{
@@ -33,14 +33,31 @@ func parseCommand(raw string) (Command, error) {
 
 		}
 		if err != nil{
-			return nil, err
+			log.Fatal(err)
 		}
 		fmt.Printf("read%s\n", v.Type())
+
+		var cmd Command
 		if v.Type()== resp.Array{
-			for i,v := range v.Array(){
-				fmt.Printf("  #%d %s, value: '%s'\n", i, v.Type(), v)
+			for _,value := range v.Array(){
+				switch value.String(){
+				case CommandSET:
+					fmt.Println(len(v.Array()))
+					
+					if len(v.Array())!= 3{
+						return nil, fmt.Errorf("invalid number of variable set command")
+					}
+					cmd = SetCommand{
+						key : v.Array()[1].String(),
+						val: v.Array()[2].String(),
+					}
+					return cmd, nil
+				default:
+					
+				}			
 			}
 		}
+		
 	}
-	return "foo", nil
+	return fmt.Errorf("invalid or unknown command received: %s", raw), nil
 }
