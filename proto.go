@@ -20,7 +20,7 @@ type Command interface{
 
 
 type SetCommand struct {
-	key, val string
+	key, val []byte
 }
 
 func parseCommand(raw string) (Command, error) {
@@ -35,21 +35,21 @@ func parseCommand(raw string) (Command, error) {
 		if err != nil{
 			log.Fatal(err)
 		}
-		fmt.Printf("read%s\n", v.Type())
+	
 
 		var cmd Command
 		if v.Type()== resp.Array{
 			for _,value := range v.Array(){
 				switch value.String(){
 				case CommandSET:
-					fmt.Println(len(v.Array()))
+					
 					
 					if len(v.Array())!= 3{
 						return nil, fmt.Errorf("invalid number of variable set command")
 					}
 					cmd = SetCommand{
-						key : v.Array()[1].String(),
-						val: v.Array()[2].String(),
+						key: v.Array()[1].Bytes(),
+						val: v.Array()[2].Bytes(),
 					}
 					return cmd, nil
 				default:
@@ -57,7 +57,7 @@ func parseCommand(raw string) (Command, error) {
 				}			
 			}
 		}
-		
+		return nil, fmt.Errorf("invalid number of variables for SET command")
 	}
-	return fmt.Errorf("invalid or unknown command received: %s", raw), nil
+	return nil, fmt.Errorf("invalid or unknown command received: %s", raw)
 }

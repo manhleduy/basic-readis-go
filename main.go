@@ -76,7 +76,7 @@ func (s *Server) loop(){
 				slog.Error("raw message error", "err", err)
 				
 			}
-			fmt.Println(rawMsg)
+			
 		case <- s.quitCh:
 			return
 		case peer := <- s.addPeerch:
@@ -100,7 +100,7 @@ func (s *Server) acceptLoop() error {
 func (s *Server) handleConn(conn net.Conn){
 	peer := NewPeer(conn, s.msgCh);
 	s.addPeerch <- peer
-	slog.Info("new peer connected", "remoeAddr", conn.RemoteAddr())
+	//slog.Info("new peer connected", "remoeAddr", conn.RemoteAddr())
 	if err := peer.readLoop();err != nil{
 		slog.Error("peer read error", "remoteAddr", conn.RemoteAddr())
 	}
@@ -112,16 +112,18 @@ func main(){
 		log.Fatal(server.Start())
 	}()
 	time.Sleep(time.Second)
-	for i :=0; i< 10; i++{
-		c := client.New("localhost:5001")
+	c := client.New("localhost:5001")
+
+	for i := 0; i< 10; i++{
 		
-		if err := c.Set(context.TODO(),fmt.Sprintf("bar %d", i), fmt.Sprintf("bar %d", i)); err != nil{
+		if err := c.Set(context.TODO(),fmt.Sprintf("foo_%d", i), fmt.Sprintf("bar_%d", i)); err != nil{
 			log.Fatal(err)
 		}
 
 		
 	//select {} // we are blocking here so the program doesnot exist
 	}
-	fmt.Println(server.kv.data)
 	time.Sleep(time.Second)
+	fmt.Println(server.kv.data)
+
 }
