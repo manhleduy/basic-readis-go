@@ -2,10 +2,13 @@ package main
 
 import (
 	//"fmt"
+	"context"
 	"fmt"
+	"goredis/client"
 	"log"
 	"log/slog"
 	"net"
+	"time"
 )
 
 
@@ -22,6 +25,8 @@ type Server struct {
 	addPeerch 	chan *Peer
 	quitCh 		chan struct{}
 	msgCh 		chan []byte
+	kv			*KV
+
 }
 
 func NewServer(cfg Config) *Server {
@@ -34,6 +39,7 @@ func NewServer(cfg Config) *Server {
 		addPeerch: 	make(chan *Peer),   
 		quitCh: 	make(chan struct{}),
 		msgCh: 		make(chan []byte),
+		kv:			NewKV(),
 	}
 }
 func (s *Server) Start() error{
@@ -57,7 +63,7 @@ func (s *Server) handleRawMessage(rawMsg []byte) error {
 	
 	switch v:=cmd.(type){
 	case SetCommand:
-		slog.Info("somebody want to se t akey into the hash table", "key", v.key, "value", v.val)
+		return s.kv.Set(v.key, v.val)
 	}
 	return nil
 }
@@ -101,5 +107,21 @@ func (s *Server) handleConn(conn net.Conn){
 }
 func main(){
 	server := NewServer(Config{})
-	log.Fatal(server.Start())
+
+	go func(){
+		log.Fatal(server.Start())
+	}()
+	time.Sleep(time.Second)
+	for i :=0; i< 10; i++{
+		c := client.New("localhost:5001")
+		
+		if err := c.Set(context.TODO(),fmt.Sprintf("bar %d", i), fmt.Sprintf("bar %d", i)); err != nil{
+			log.Fatal(err)
+		}
+
+		
+	//select {} // we are blocking here so the program doesnot exist
+	}
+	fmt.Println(server.kv.data)
+	time.Sleep(time.Second)
 }
