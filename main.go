@@ -18,13 +18,18 @@ const DefaultListenAddr = ":5001"
 type Config struct {
 	ListenAddr string
 }
+type Message struct{
+	data []byte
+	peer *Peer
+}
 type Server struct {
 	Config
 	peers 		map[*Peer]bool
 	ln 			net.Listener
 	addPeerch 	chan *Peer
 	quitCh 		chan struct{}
-	msgCh 		chan []byte
+	msgCh 		chan Message
+
 	kv			*KV
 
 }
@@ -38,7 +43,7 @@ func NewServer(cfg Config) *Server {
 		peers: 		make(map[*Peer]bool),
 		addPeerch: 	make(chan *Peer),   
 		quitCh: 	make(chan struct{}),
-		msgCh: 		make(chan []byte),
+		msgCh: 		make(chan Message),
 		kv:			NewKV(),
 	}
 }
@@ -55,8 +60,8 @@ func (s *Server) Start() error{
 	return nil
 }
 
-func (s *Server) handleRawMessage(rawMsg []byte) error {
-	cmd, err := parseCommand(string(rawMsg))
+func (s *Server) handleMessage(msg Message) error {
+	cmd, err := parseCommand(string(msg.data))
 	if err != nil{
 		return err
 	}
@@ -64,15 +69,28 @@ func (s *Server) handleRawMessage(rawMsg []byte) error {
 	switch v:=cmd.(type){
 	case SetCommand:
 		return s.kv.Set(v.key, v.val)
+	case GetCommand:
+		val, ok:= s.kv.Get(v.key)
+		if !ok{
+			return fmt.Errorf("key not found")
+		}
+		_, err := msg.peer.Send(val)
+		if err != nil{
+			slog.Error("peer send error", "err", err)
+		}
+		
+		
+		
 	}
+
 	return nil
 }
 
 func (s *Server) loop(){
 	for {
 		select{
-		case rawMsg := <- s.msgCh:
-			if err :=s.handleRawMessage(rawMsg); err != nil{
+		case msg := <- s.msgCh:
+			if err :=s.handleMessage(msg); err != nil{
 				slog.Error("raw message error", "err", err)
 				
 			}
@@ -119,11 +137,17 @@ func main(){
 		if err := c.Set(context.TODO(),fmt.Sprintf("foo_%d", i), fmt.Sprintf("bar_%d", i)); err != nil{
 			log.Fatal(err)
 		}
+		time.Sleep(time.Second)
+		val, err := c.Get(context.TODO(),fmt.Sprintf("foo_%d", i))
+		if err != nil{
+			log.Fatal(err)
+		}
+		fmt.Println("got this back =>",val)
 
 		
 	//select {} // we are blocking here so the program doesnot exist
 	}
-	time.Sleep(time.Second)
-	fmt.Println(server.kv.data)
+
+	
 
 }
