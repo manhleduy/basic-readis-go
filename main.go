@@ -2,13 +2,14 @@ package main
 
 import (
 	//"fmt"
-	"context"
+	
+	"flag"
 	"fmt"
-	"goredis/client"
+	
 	"log"
 	"log/slog"
 	"net"
-	"time"
+	
 )
 
 
@@ -19,7 +20,7 @@ type Config struct {
 	ListenAddr string
 }
 type Message struct{
-	data []byte
+	cmd Command
 	peer *Peer
 }
 type Server struct {
@@ -61,12 +62,9 @@ func (s *Server) Start() error{
 }
 
 func (s *Server) handleMessage(msg Message) error {
-	cmd, err := parseCommand(string(msg.data))
-	if err != nil{
-		return err
-	}
 	
-	switch v:=cmd.(type){
+	
+	switch v:=msg.cmd.(type){
 	case SetCommand:
 		return s.kv.Set(v.key, v.val)
 	case GetCommand:
@@ -118,36 +116,24 @@ func (s *Server) acceptLoop() error {
 func (s *Server) handleConn(conn net.Conn){
 	peer := NewPeer(conn, s.msgCh);
 	s.addPeerch <- peer
-	//slog.Info("new peer connected", "remoeAddr", conn.RemoteAddr())
+
 	if err := peer.readLoop();err != nil{
 		slog.Error("peer read error", "remoteAddr", conn.RemoteAddr())
 	}
 }
 func main(){
-	server := NewServer(Config{})
+	listenAddr := flag.String(
+		"ListenAddr", 
+		DefaultListenAddr, 
+		"listen addres of the goredis server",
+	)
 
-	go func(){
-		log.Fatal(server.Start())
-	}()
-	time.Sleep(time.Second)
-	c := client.New("localhost:5001")
-
-	for i := 0; i< 10; i++{
-		
-		if err := c.Set(context.TODO(),fmt.Sprintf("foo_%d", i), fmt.Sprintf("bar_%d", i)); err != nil{
-			log.Fatal(err)
-		}
-		time.Sleep(time.Second)
-		val, err := c.Get(context.TODO(),fmt.Sprintf("foo_%d", i))
-		if err != nil{
-			log.Fatal(err)
-		}
-		fmt.Println("got this back =>",val)
-
-		
-	//select {} // we are blocking here so the program doesnot exist
-	}
-
+	flag.Parse()
 	
+	server := NewServer(Config{
+		ListenAddr: *listenAddr,
 
+	})
+	log.Fatal(server.Start())
 }
+
