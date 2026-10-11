@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"context"
+	
 	"net"
 
 	"github.com/tidwall/resp"
@@ -55,4 +56,8 @@ func (c *Client) Get(ctx context.Context, key string) (string, error){
 	n, err := c.conn.Read(b)
 
 	return string(b[:n]), err
+}
+
+func (c *Client) Close() error{
+	return c.conn.Close()
 }
