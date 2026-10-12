@@ -1,6 +1,7 @@
 package main
 
 import (
+	
 	"context"
 	"fmt"
 	"goredis/client"
@@ -8,8 +9,20 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+
 )
 
+func TestFooBar(t *testing.T){
+	
+
+	in := map[string]string{
+		"server": "redis",
+		"version": "6.0",
+	}
+	out := respWriteMap(in)
+	fmt.Println(string(out))
+}
 
 func TestServerWithMultiClient(t *testing.T) {
 	
@@ -51,8 +64,11 @@ func TestServerWithMultiClient(t *testing.T) {
 	}	
 
 	wg.Wait()
+
+	time.Sleep(time.Second)
 	if len(server.peers) != 0{
 		t.Fatalf("expected 0 peers but got %d", len(server.peers))
 	}
 
 }
+
